@@ -1,0 +1,48 @@
+name: "pensiv_audio"
+platform: "pytorch_libtorch"
+max_batch_size: 10000
+
+input [
+    {
+        name: "INPUT__0"
+        data_type: TYPE_FP32
+        dims: [2, 128, 51]
+    }
+]
+
+output [
+    {
+        name: "OUTPUT__0"
+        data_type: TYPE_FP32
+        dims: [128, 64]
+    }
+]
+
+instance_group [
+    {
+        count: 1
+        kind: KIND_GPU
+        gpus: [0,1]
+    }
+]
+
+parameters: {
+key: "DISABLE_OPTIMIZED_EXECUTION"
+    value: {
+    string_value: "true"
+    }
+}
+
+parameters: {
+key: "INFERENCE_MODE"
+    value: {
+    string_value: "true"
+    }
+}
+
+parameters: {
+key: "ENABLE_NVFUSER"
+    value: {
+    string_value: "true"
+    }
+}
