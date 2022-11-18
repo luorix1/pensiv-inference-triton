@@ -25,9 +25,12 @@ async def test_infer(triton_client, model_name, model_input):
 async def main():
     frames = np.load("frames.npy")
     mels = np.load("mels.npy")
+    lstm = np.load("lstm.npy")
 
     print("numpy files loaded")
     print(frames.shape)
+    print(mels.shape)
+    print(lstm.shape)
 
     try:
         triton_client = httpclient.InferenceServerClient(
@@ -41,47 +44,25 @@ async def main():
 
     vision_model_name = "pensiv_vision"
     audio_model_name = "pensiv_audio"
-    # lstm_model_name = "pensiv_lstm"
-
-    # statistics = await triton_client.get_inference_statistics(model_name=vision_model_name, headers=None)
-    # print(statistics)
-
-    # results = await test_infer(
-    #     triton_client=triton_client,
-    #     model_name=vision_model_name,
-    #     frames=frames
-    # )
-    # print(results.get_response())
+    lstm_model_name = "pensiv_lstm"
 
     vision_result = await test_infer(
         triton_client=triton_client,
         model_name=vision_model_name,
-        model_input=frames[:16],
+        model_input=frames,
     )
     print(vision_result.get_response())
 
-    vision_result = await test_infer(
+    audio_result = await test_infer(
+        triton_client=triton_client, model_name=audio_model_name, model_input=mels
+    )
+    print(audio_result.get_response())
+
+    lstm_result = await test_infer(
         triton_client=triton_client,
-        model_name=vision_model_name,
-        model_input=frames[16:32],
+        model_name=lstm_model_name,
+        model_input=lstm[None, :],
     )
-    print(vision_result.get_response())
-
-    # vision_result, audio_result = await asyncio.gather(
-    #     test_infer(
-    #         triton_client=triton_client,
-    #         model_name=vision_model_name,
-    #         model_input=frames[:10]
-    #     ),
-    #     test_infer(
-    #         triton_client=triton_client,
-    #         model_name=audio_model_name,
-    #         model_input=mels[:10]
-    #     )
-    # )
-
-    # print(vision_result.get_response())
-    # print(audio_result.get_response())
 
     await triton_client.close()
     print("PASS: infer")
