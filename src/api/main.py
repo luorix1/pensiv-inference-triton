@@ -19,7 +19,7 @@ from starlette.status import (
 )
 
 from src.api.model import *
-from src.api.predictor import AudioModel, Preprocessor, VisionModel
+from src.api.predictor import Preprocessor
 
 # define logger
 if not os.path.exists("logs"):
@@ -39,12 +39,6 @@ preprocessor = Preprocessor(logger=logger)
 triton_client = httpclient.InferenceServerClient(
     url="localhost:8000", verbose=False, concurrency=10
 )
-
-# define vision model
-vision_model = VisionModel(logger=logger, triton_client=triton_client)
-
-# define audio model
-audio_model = AudioModel(logger=logger, triton_client=triton_client)
 
 # define some constants
 HOP_LENGTH = 512
@@ -132,6 +126,8 @@ async def run_inference(data: PensivModelRequest):
         filename=data.filename,
         path=data.path,
     )
+    # np.save("frames.npy", frame_list[0])
+    # np.save("mels.npy", mel_list[0])
     preprocess = time.time()
 
     logger.info(
@@ -182,19 +178,36 @@ async def run_inference(data: PensivModelRequest):
 
     # run inference with vision and audio model
     mid_features = []
+    vision_outputs = []
+    audio_outputs = []
+
+    vision_start = time.time()
     for i in range(num_requests):
-        logger.info(f"{i}")
         # Get the result from the initiated asynchronous inference request.
         # Note the call will block till the server responds.
-        # vision_result = vision_async_requests[i].get_result()
-        # vision_output = vision_result.as_numpy("OUTPUT__0")
-        # logger.info(f"vision output of size {vision_output.shape}")
+        vision_result = vision_async_requests[i].get_result()
+        vision_output = vision_result.as_numpy("OUTPUT__0")
+        vision_outputs.append(vision_output)
+    vision_end = time.time()
+    logger.info(f"vision inference complete in {vision_end - vision_start} seconds")
 
+    audio_start = time.time()
+    for i in range(num_requests):
+        # Get the result from the initiated asynchronous inference request.
+        # Note the call will block till the server responds.
         audio_result = audio_async_requests[i].get_result()
         audio_output = audio_result.as_numpy("OUTPUT__0")
-        logger.info(f"audio output of size {audio_output.shape}")
+        audio_outputs.append(audio_output)
+    audio_end = time.time()
+    logger.info(f"audio inference complete in {audio_end - audio_start} seconds")
 
-        # mid_features.append(np.concatenate([vision_output, audio_output], axis=-1))
+    # Reshape features to be compatible as input for LSTM model
+    for i in range(num_requests):
+        mid_feature = np.concatenate([vision_outputs[i], audio_outputs[i]], axis=-1)
+        mid_features.append(mid_feature)
+
+    mid_features = np.concatenate(mid_features, axis=0)[None, :]
+    logger.info(mid_features.shape)
 
     # run inference through LSTM model
     # Initialize the data
@@ -217,7 +230,7 @@ async def run_inference(data: PensivModelRequest):
     print(result.get_response())
 
     # parse output
-    output = result.as_numpy("OUTPUT__0")
+    output = result.as_numpy("OUTPUT__0")[0]
     output = np.exp(output)
     output = output[..., 1] / (output[..., 0] + output[..., 1])
     output = np.log(output / (1 - output))

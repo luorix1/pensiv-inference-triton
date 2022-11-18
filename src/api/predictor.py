@@ -134,152 +134,152 @@ class Preprocessor:
         return aggregated_frames, aggregated_mels, num_requests
 
 
-class VisionModel:
-    """Vision model that returns batched features from input video."""
+# class VisionModel:
+#     """Vision model that returns batched features from input video."""
 
-    def __init__(self, logger, triton_client) -> None:
-        """Initialize."""
-        self.logger = logger
-        self.triton_client = triton_client
-        self.model_name = "pensiv_vision"
-        self.outputs = [httpclient.InferRequestedOutput("OUTPUT__0", binary_data=True)]
+#     def __init__(self, logger, triton_client) -> None:
+#         """Initialize."""
+#         self.logger = logger
+#         self.triton_client = triton_client
+#         self.model_name = "pensiv_vision"
+#         self.outputs = [httpclient.InferRequestedOutput("OUTPUT__0", binary_data=True)]
 
-    async def infer(
-        self,
-        frames,
-    ):
-        """Run inference and extract features from the frames of the video file."""
-        inputs = []
-        inputs.append(httpclient.InferInput("INPUT__0", list(frames.shape), "FP32"))
+#     async def infer(
+#         self,
+#         frames,
+#     ):
+#         """Run inference and extract features from the frames of the video file."""
+#         inputs = []
+#         inputs.append(httpclient.InferInput("INPUT__0", list(frames.shape), "FP32"))
 
-        # Initialize the data
-        inputs[0].set_data_from_numpy(frames, binary_data=True)
+#         # Initialize the data
+#         inputs[0].set_data_from_numpy(frames, binary_data=True)
 
-        results = await self.triton_client.infer(
-            self.model_name, inputs, outputs=self.outputs
-        )
-        output = results.as_numpy("OUTPUT__0")
+#         results = await self.triton_client.infer(
+#             self.model_name, inputs, outputs=self.outputs
+#         )
+#         output = results.as_numpy("OUTPUT__0")
 
-        return output
-
-
-class AudioModel:
-    """Audio model that returns features from preprocessed mel-spectrograms"""
-
-    def __init__(self, logger, triton_client) -> None:
-        self.logger = logger
-        self.triton_client = triton_client
-        self.model_name = "pensiv_audio"
-        self.outputs = [httpclient.InferRequestedOutput("OUTPUT__0", binary_data=True)]
-
-    async def infer(self, mels: np.array):
-        inputs = []
-        inputs.append(httpclient.InferInput("INPUT__0", list(mels.shape), "FP32"))
-
-        # Initialize the data
-        inputs[0].set_data_from_numpy(mels, binary_data=True)
-
-        results = await self.triton_client.infer(
-            self.model_name, inputs, outputs=self.outputs
-        )
-        output = results.as_numpy("OUTPUT__0")
-
-        return output
+#         return output
 
 
-class PensivModel:
-    """Multimodal+LSTM model that returns highlight detection results from input video"""
+# class AudioModel:
+#     """Audio model that returns features from preprocessed mel-spectrograms"""
 
-    def __init__(self, logger, triton_client) -> None:
-        self.logger = logger
-        self.triton_client = triton_client
+#     def __init__(self, logger, triton_client) -> None:
+#         self.logger = logger
+#         self.triton_client = triton_client
+#         self.model_name = "pensiv_audio"
+#         self.outputs = [httpclient.InferRequestedOutput("OUTPUT__1", binary_data=True)]
 
-        self.vision_model_name = "pensiv_vision"
-        self.audio_model_name = "pensiv_audio"
-        self.lstm_model_name = "pensiv_lstm"
+#     async def infer(self, mels):
+#         inputs = []
+#         inputs.append(httpclient.InferInput("INPUT__1", list(mels.shape), "FP32"))
 
-        self.vision_outputs = [grpcclient.InferRequestedOutput("OUTPUT__0")]
-        self.audio_outputs = [grpcclient.InferRequestedOutput("OUTPUT__1")]
-        self.lstm_outputs = [grpcclient.InferRequestedOutput("OUTPUT__2")]
+#         # Initialize the data
+#         inputs[0].set_data_from_numpy(mels, binary_data=True)
 
-        # set up constant variables
-        self.HOP_LENGTH = 512
-        self.N_UNIT = 128
-        self.UNIT_LENGTH = 2 * 1 + 1
-        self.SKIP_LENGTH = 3
-        self.LOAD_LENGTH = self.UNIT_LENGTH * self.N_UNIT * self.SKIP_LENGTH
+#         results = await self.triton_client.infer(
+#             self.model_name, inputs, outputs=self.outputs
+#         )
+#         output = results.as_numpy("OUTPUT__1")
 
-        self.RESOLUTION = (640, 360)
+#         return output
 
-    async def infer(
-        self,
-        frames,
-        mels,
-        id: int,
-        date: str,
-        filename: str,
-        path: str,
-        threshold: float,
-    ):
-        import time
 
-        start = time.time()
-        # define vision model inputs
-        vision_inputs = [grpcclient.InferInput("INPUT__0", frames.shape, "FP32")]
-        vision_inputs[0].set_data_from_numpy(frames.astype(np.float32))
+# class PensivModel:
+#     """Multimodal+LSTM model that returns highlight detection results from input video"""
 
-        # # define audio model inputs
-        # audio_inputs = [
-        #     grpcclient.InferInput("INPUT__1", mels.shape, "FP32")
-        # ]
-        # audio_inputs[0].set_data_from_numpy(mels.astype(np.float32))
+#     def __init__(self, logger, triton_client) -> None:
+#         self.logger = logger
+#         self.triton_client = triton_client
 
-        # run inference for vision model
-        vision_results = await self.triton_client.infer(
-            model_name=self.vision_model_name,
-            inputs=vision_inputs,
-            outputs=self.vision_outputs,
-        )
-        vision = time.time()
-        self.logger.info(f"vision inference complete in {vision - start} seconds")
+#         self.vision_model_name = "pensiv_vision"
+#         self.audio_model_name = "pensiv_audio"
+#         self.lstm_model_name = "pensiv_lstm"
 
-        # # run inference for audio model
-        # audio_results = await self.triton_client.infer(
-        #     model_name=self.audio_model_name,
-        #     inputs=audio_inputs,
-        #     outputs=self.audio_outputs,
-        # )
-        # audio = time.time()
-        # self.logger.info(f"audio inference complete in {audio - vision} seconds")
+#         self.vision_outputs = [grpcclient.InferRequestedOutput("OUTPUT__0")]
+#         self.audio_outputs = [grpcclient.InferRequestedOutput("OUTPUT__1")]
+#         self.lstm_outputs = [grpcclient.InferRequestedOutput("OUTPUT__2")]
 
-        # concatenate alone batch axis
-        aggregated_features.append(vision_results.as_numpy("OUTPUT__0"))
-        # aggregated_features.append(audio_results.as_numpy("OUTPUT__1"))
-        # aggregated_features = np.concatenate(aggregated_features, axis=0)
-        self.logger.info(
-            f"vision output shape {aggregated_features[0].as_numpy('OUTPUT__0').shape}"
-        )
-        # self.logger.info(f"audio output shape {aggregated_features[1].as_numpy('OUTPUT__1').shape}")
+#         # set up constant variables
+#         self.HOP_LENGTH = 512
+#         self.N_UNIT = 128
+#         self.UNIT_LENGTH = 2 * 1 + 1
+#         self.SKIP_LENGTH = 3
+#         self.LOAD_LENGTH = self.UNIT_LENGTH * self.N_UNIT * self.SKIP_LENGTH
 
-        return aggregated_features[0]
+#         self.RESOLUTION = (640, 360)
 
-        # # define lstm model inputs
-        # lstm_inputs = [
-        #     grpcclient.InferInput("INPUT__2", aggregated_features.shape, "FP32")
-        # ]
-        # lstm_inputs[0].set_data_from_numpy(aggregated_features.astype(np.float32))
+#     async def infer(
+#         self,
+#         frames,
+#         mels,
+#         id: int,
+#         date: str,
+#         filename: str,
+#         path: str,
+#         threshold: float,
+#     ):
+#         import time
 
-        # # run inference for lstm model
-        # lstm_results = await self.triton_client.infer(
-        #     model_name=self.lstm_model_name,
-        #     inputs=lstm_inputs,
-        #     outputs=self.lstm_outputs,
-        # )
+#         start = time.time()
+#         # define vision model inputs
+#         vision_inputs = [grpcclient.InferInput("INPUT__0", frames.shape, "FP32")]
+#         vision_inputs[0].set_data_from_numpy(frames.astype(np.float32))
 
-        # # postprocess output from lstm model
-        # output = lstm_results.as_numpy("OUTPUT__2")
-        # output = np.exp(output)
-        # output = output[..., 1] / (output[..., 0] + output[..., 1])
-        # output = np.log(output / (1 - output))
+#         # # define audio model inputs
+#         # audio_inputs = [
+#         #     grpcclient.InferInput("INPUT__1", mels.shape, "FP32")
+#         # ]
+#         # audio_inputs[0].set_data_from_numpy(mels.astype(np.float32))
 
-        # return output
+#         # run inference for vision model
+#         vision_results = await self.triton_client.infer(
+#             model_name=self.vision_model_name,
+#             inputs=vision_inputs,
+#             outputs=self.vision_outputs,
+#         )
+#         vision = time.time()
+#         self.logger.info(f"vision inference complete in {vision - start} seconds")
+
+#         # # run inference for audio model
+#         # audio_results = await self.triton_client.infer(
+#         #     model_name=self.audio_model_name,
+#         #     inputs=audio_inputs,
+#         #     outputs=self.audio_outputs,
+#         # )
+#         # audio = time.time()
+#         # self.logger.info(f"audio inference complete in {audio - vision} seconds")
+
+#         # concatenate alone batch axis
+#         aggregated_features.append(vision_results.as_numpy("OUTPUT__0"))
+#         # aggregated_features.append(audio_results.as_numpy("OUTPUT__1"))
+#         # aggregated_features = np.concatenate(aggregated_features, axis=0)
+#         self.logger.info(
+#             f"vision output shape {aggregated_features[0].as_numpy('OUTPUT__0').shape}"
+#         )
+#         # self.logger.info(f"audio output shape {aggregated_features[1].as_numpy('OUTPUT__1').shape}")
+
+#         return aggregated_features[0]
+
+#         # # define lstm model inputs
+#         # lstm_inputs = [
+#         #     grpcclient.InferInput("INPUT__2", aggregated_features.shape, "FP32")
+#         # ]
+#         # lstm_inputs[0].set_data_from_numpy(aggregated_features.astype(np.float32))
+
+#         # # run inference for lstm model
+#         # lstm_results = await self.triton_client.infer(
+#         #     model_name=self.lstm_model_name,
+#         #     inputs=lstm_inputs,
+#         #     outputs=self.lstm_outputs,
+#         # )
+
+#         # # postprocess output from lstm model
+#         # output = lstm_results.as_numpy("OUTPUT__2")
+#         # output = np.exp(output)
+#         # output = output[..., 1] / (output[..., 0] + output[..., 1])
+#         # output = np.log(output / (1 - output))
+
+#         # return output
