@@ -232,7 +232,7 @@ async def run_inference(data: PensivModelRequest):
     # parse output
     output = result.as_numpy("OUTPUT__0")[0]
     output = np.exp(output)
-    output = output[..., 1] / (output[..., 0] + output[..., 1])
+    output = output[:, 1] / (output[:, 0] + output[:, 1])
     output = np.log(output / (1 - output))
 
     return {"prediction": output.tolist()}

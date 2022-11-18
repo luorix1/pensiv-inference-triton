@@ -2,13 +2,35 @@ from pathlib import Path
 from typing import List
 
 
+def unpack_highlight_proposals(results, threshold: float):
+    normalized_results = (results - results.min()) / (results.max() - results.min())
+
+    # filter out values lower than threshold
+    result_dict = {}
+    for idx in range(len(normalized_results)):
+        frame = 9 * idx + 3
+        if normalized_results[idx] >= threshold:
+            result_dict[frame] = normalized_results[idx]
+    return result_dict
+
+
 def generate_json(
-    filename: str, highlight_proposals: dict, video_path: str, output_path: str
+    date: str,
+    filename: str,
+    highlight_proposals: dict,
+    video_path: str,
+    output_path: str,
 ):
     relative_path = Path(video_path).name
+    Path(output_path).mkdir(exist_ok=True)
+
+    with open(Path(output_path).joinpath(f"{date}_{filename}.json"), "w") as fp:
+        json.dump(highlight_proposals, fp)
+    fp.close()
 
 
 def generate_fcpxml(
+    date: str,
     filename: str,
     file_info: List,
     highlight_proposals: dict,
@@ -16,8 +38,6 @@ def generate_fcpxml(
     output_path: str,
 ):
     relative_path = Path(video_path).name
-    date = Path(video_path).parent.stem
-
     Path(output_path).mkdir(exist_ok=True)
 
     has_video = 1 if any(info["codec_type"] == "video" for info in file_info) else 0
