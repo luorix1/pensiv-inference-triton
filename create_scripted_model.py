@@ -3,7 +3,7 @@ from pathlib import Path
 import torch
 import torch.nn
 
-from src.api.ml.pensiv_model import CNNModel, LSTMModel
+from src.ml.pensiv_model import CNNModel, LSTMModel
 
 if __name__ == "__main__":
     model_path = Path("/data/shorts/admin/model/script/bestmodel.pth.tar")
